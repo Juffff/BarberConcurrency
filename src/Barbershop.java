@@ -1,6 +1,6 @@
 /**
  * Created by Juff on 22.10.16.
- * <p>
+
  * В парикмахерской есть зал для стрижки одного клиента и комната
  * ожидания n клиентов. Клиенты заходят в комнату ожидания по одному, если
  * в ней есть место, либо уходят стричься в другой салон, если все места
@@ -19,7 +19,7 @@ public class Barbershop {
 
     public static WaitingHall waitingHall;
     public static Saloon saloon;
-    public static Object monitor = new Object();
+    public static final Object monitor = new Object();
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -28,73 +28,55 @@ public class Barbershop {
     }
 
     private void go() throws InterruptedException {
-        int n = 5; //TODO: n to Input
+        int n = 1;
         waitingHall = WaitingHall.getWaitingHall(n);
         saloon = Saloon.getSaloon();
 
-      /*  Thread barberThread = new Thread(new Barber(waitingHall, saloon));*/
-       /* Thread clientGeneratorThread = new Thread(new ClientGenerator(waitingHall));
-        clientGeneratorThread.start();*/
-
-
-
-
-        Thread barberThread = new Thread() {
-            Barber barber = new Barber(waitingHall, saloon);
-            boolean sleeping = false;
-
-            @Override
-            public void run() {
-
-                    synchronized (monitor) {
-                        if (waitingHall.isEmpty() /*&& !saloon.isBuisy()*/) {
-                            try {
-                                System.out.println("Barber go sleeping!");
-                                sleeping = true;
-                                monitor.wait();
-
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        } else {
-                         /*   if (sleeping) {
-                                System.out.println("Barber got up!");
-                                sleeping = false;
-                            }*/
-                            barber.trim();
-                        }
-
-                    }
-
-
-                }
-
-        };
-
-        barberThread.start();
-
-        Thread clientGeneratorThread = new Thread(){
+        Thread clientGenerator = new Thread(new Runnable() {
             ClientGenerator clientGenerator = new ClientGenerator(waitingHall);
             @Override
             public void run() {
-                synchronized (monitor) {
-                    while (!isInterrupted()) {
-                        System.out.println(waitingHall.isEmpty());
-                        clientGenerator.generate();
-                        saloon.setBusy(true);
-                        System.out.println(barberThread.getState());
-                        monitor.notify();
-                        System.out.println(barberThread.getState());
-                    }
+                while (!Thread.currentThread().isInterrupted()) {
+                    clientGenerator.generate();
+                    if (!waitingHall.isEmpty()) {
+                        synchronized (monitor) {
+                            monitor.notifyAll();
+                        }
                     }
 
-
+                }
             }
-        };
-        clientGeneratorThread.start();
+        });
+        clientGenerator.start();
+
+        Thread barberThread = new Thread(new Runnable() {
+            Barber barber = new Barber(waitingHall, saloon);
+
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()) {
+                    if (!waitingHall.isEmpty() && !saloon.isBuisy()) {
+                        barber.trim();
+                    } else {
+
+                        System.out.println("[BARBER]: Nobody to trim! I'm go sleeping!");
+                        synchronized (monitor) {
+                            try {
+                                while (waitingHall.isEmpty()) {
+                                    monitor.wait();
+                                }
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        System.out.println("Barber got up!");
+                    }
+                }
+            }
+        });
+
+        barberThread.start();
 
     }
-
-
 }
 
