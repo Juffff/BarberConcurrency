@@ -13,6 +13,14 @@ public class WaitingHall {
         this.queue = new ArrayBlockingQueue(capacity, true);
     }
 
+    public boolean isEmpty() {
+        if (queue.size() == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public static WaitingHall getWaitingHall(int capacity) {
         if (waitingHall == null) {
             waitingHall = new WaitingHall(capacity);
@@ -21,14 +29,26 @@ public class WaitingHall {
     }
 
     public boolean addClient(Client client) {
+        System.out.println("New Client came: " + client);
+
+        if (queue.remainingCapacity() > 0) {
+            System.out.println(client + " added to waiting hall!");
+        } else {
+            System.out.println(client + " gone!");
+            return false;
+        }
         try {
-            return queue.add(client);
+
+                return queue.add(client);
+
+
         } catch (IllegalStateException e) {
             return false;
         }
     }
 
-    public Object callNextClient(){
+
+    public Object callNextClient() {
         return queue.poll();
     }
 
